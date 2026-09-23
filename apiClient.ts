@@ -1,0 +1,50 @@
+// Thin fetch-based replacement for Playwright's APIRequestContext, kept API-compatible
+// (.ok()/.status()/.json()/.text() as methods, {data} options object) so the migration
+// away from @playwright/test didn't require touching every call site in the specs.
+const BASE_URL = process.env.KRANE_BASE_URL ?? '';
+const API_TOKEN = process.env.KRANE_API_TOKEN;
+
+export interface ApiResponse {
+  ok(): boolean;
+  status(): number;
+  json(): Promise<any>;
+  text(): Promise<string>;
+}
+
+function wrap(res: Response): ApiResponse {
+  // A fetch Response body can only be read once, but Playwright's APIResponse (which
+  // this shim replaces) let callers call .text()/.json() as many times as they liked
+  // (e.g. once in an expect() failure message, again to parse the body). Cache the raw
+  // text on first read so every subsequent .text()/.json() call reuses it instead of
+  // touching the already-consumed stream.
+  let bodyText: Promise<string> | null = null;
+  const readText = () => (bodyText ??= res.text());
+
+  return {
+    ok: () => res.ok,
+    status: () => res.status,
+    json: async () => JSON.parse(await readText()),
+    text: () => readText(),
+  };
+}
+
+async function send(method: string, path: string, data?: unknown): Promise<ApiResponse> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(data !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {}),
+    },
+    body: data !== undefined ? JSON.stringify(data) : undefined,
+  });
+  return wrap(res);
+}
+
+export const api = {
+  get: (path: string) => send('GET', path),
+  post: (path: string, opts?: { data?: unknown }) => send('POST', path, opts?.data),
+  patch: (path: string, opts?: { data?: unknown }) => send('PATCH', path, opts?.data),
+  put: (path: string, opts?: { data?: unknown }) => send('PUT', path, opts?.data),
+  delete: (path: string) => send('DELETE', path),
+};
