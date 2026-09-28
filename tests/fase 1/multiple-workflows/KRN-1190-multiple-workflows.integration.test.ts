@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { api } from '../apiClient';
-import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../helpers';
+import { api } from '../../apiClient';
+import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../../helpers';
 
 // A "workflow" from the stage manual maps to a single schedule object — there is
 // no separate /workflow endpoint in the OpenAPI spec. KRN-1190 ("linking multiple

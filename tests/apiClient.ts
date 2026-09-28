@@ -1,6 +1,8 @@
 // Thin fetch-based replacement for Playwright's APIRequestContext, kept API-compatible
 // (.ok()/.status()/.json()/.text() as methods, {data} options object) so the migration
 // away from @playwright/test didn't require touching every call site in the specs.
+import { recordApiCall } from './callLog';
+
 const BASE_URL = process.env.KRANE_BASE_URL ?? '';
 const API_TOKEN = process.env.KRANE_API_TOKEN;
 
@@ -38,6 +40,7 @@ async function send(method: string, path: string, data?: unknown): Promise<ApiRe
     },
     body: data !== undefined ? JSON.stringify(data) : undefined,
   });
+  recordApiCall({ method, path, status: res.status });
   return wrap(res);
 }
 

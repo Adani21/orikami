@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { api } from '../apiClient';
-import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../helpers';
+import { api } from '../../apiClient';
+import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../../helpers';
 
 // KRN-124 — herhaalfrequentie: a schedule's `repeat` field controls how often a
 // test/questionnaire recurs. Per the OpenAPI spec (ScheduleEntityDTO.repeat), this is one of:

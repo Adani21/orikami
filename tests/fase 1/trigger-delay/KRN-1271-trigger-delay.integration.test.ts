@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { api } from '../apiClient';
-import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../helpers';
+import { api } from '../../apiClient';
+import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../../helpers';
 
 // KRN-1271 — a delay on the trigger: startOn.configuration.delay =
 // { durationUnit: hour|day|week|month|year, delayDuration, hour, minute }. Lives on

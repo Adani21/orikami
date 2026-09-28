@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { api } from '../apiClient';
-import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../helpers';
+import { api } from '../../apiClient';
+import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../../helpers';
 
 describe('KRN-1187 — setting a notification', () => {
   test('KRN-1187-001 & KRN-1187-002: happy path: reminders and notification are saved on the schedule', async () => {

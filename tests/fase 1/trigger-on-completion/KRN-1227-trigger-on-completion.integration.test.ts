@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { api } from '../apiClient';
-import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../helpers';
+import { api } from '../../apiClient';
+import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../../helpers';
 
 // KRN-1227 — a schedule should only produce a task once its experiment completes
 // (startOn.event = "ExperimentCompleted"), not immediately.

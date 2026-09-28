@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
-import { api } from '../apiClient';
-import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../helpers';
+import { api } from '../../apiClient';
+import { baseSchedule, getFirstProjectId, createThrowawayPatient } from '../../helpers';
 
 // Open question (not tied to a KRN ticket yet): if you call PATCH /user/{userId} with
 // a `schedules` array, does that replace the existing list, or does it get merged in?

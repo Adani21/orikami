@@ -1,0 +1,5 @@
+node_modules/
+.env
+coverage/
+api-call-log.ndjson
+test-results.xml

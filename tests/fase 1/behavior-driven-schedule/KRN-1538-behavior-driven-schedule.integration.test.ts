@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { api } from '../apiClient';
-import { baseSchedule, getFirstProjectId, createThrowawayPatient, createThrowawayPatientWithEmail } from '../helpers';
+import { api } from '../../apiClient';
+import { baseSchedule, getFirstProjectId, createThrowawayPatient, createThrowawayPatientWithEmail } from '../../helpers';
 
 // KRN-1538 — a schedule should still deliver its experiment even if a patient logs in
 // later (or earlier) than expected (startOn.event = "FirstLogin"), and should not fire
