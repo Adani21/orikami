@@ -57,6 +57,18 @@ describe('KRN-124 — repeat frequency', () => {
     }
   });
 
+  // KRN-124-BUG-1 — confirmed 2026-10-01 against staging, reproduced twice: for a patient
+  // whose only schedule is a RelativeRepeat starting in the past (here, 2 days ago, "every
+  // 1 day"), GET /tasks?userId=<id> returns 500 on *every* call — all 833 polling attempts
+  // across a full 90s window failed the same way, not an occasional flake. The body is a
+  // generic Axios error forwarded as-is:
+  //   {"code":"ERR_BAD_RESPONSE","message":"Request failed with status code 500"}
+  // — i.e. some downstream call the gateway makes to compute/list this patient's tasks is
+  // itself failing, and that raw client error leaks back to us unhandled instead of a
+  // proper error response. Isolate from KRN-1183-BUG-1 (concurrent PATCH /user/{userId})
+  // and the FGA outage (ECONNREFUSED to 10.44.7.68:8080) — different error shape, and this
+  // one reproduces deterministically for this one scenario rather than intermittently.
+  // Asserting the desired behavior (>= 2 tasks) so this stays red until fixed.
   test(
     'KRN-124-003: a second occurrence appears once the first repeat period has elapsed',
     { timeout: 100_000 },
@@ -94,4 +106,96 @@ describe('KRN-124 — repeat frequency', () => {
       }
     },
   );
+
+  // The four tests below only check what the PATCH/GET-back round trip accepts — not
+  // whether tasks actually get generated — so they're independent of KRN-124-BUG-1 above.
+  // A real DST-boundary test (does a daily repeat skip/double up across the clock change?)
+  // would need the same elapsed-repeat-via-backdating approach as KRN-124-003, so it's
+  // blocked on that bug too and isn't included here.
+
+  test('KRN-124-004: numberOfRepeats: 0 is accepted and saved as-is', async () => {
+    const projectId = await getFirstProjectId();
+    const patientId = await createThrowawayPatient('krane-124-zero-repeats');
+
+    try {
+      const repeat = { repeatDuration: 1, durationUnit: 'day', numberOfRepeats: 0 };
+      const schedule = baseSchedule({ repeat }, projectId);
+
+      const patchRes = await api.patch(`/user/${patientId}`, { data: { schedules: [schedule] } });
+      expect(patchRes.ok(), `patch /user/${patientId} gave ${patchRes.status()}: ${await patchRes.text()}`).toBeTruthy();
+
+      const getRes = await api.get(`/patient/${patientId}`);
+      expect(getRes.ok(), `get /patient/${patientId} gave ${getRes.status()}: ${await getRes.text()}`).toBeTruthy();
+      const patient = await getRes.json();
+      expect(patient.schedules[0].repeat).toEqual(repeat);
+    } finally {
+      const del = await api.delete(`/user/${patientId}`);
+      console.log('cleaning up test patient, status:', del.status());
+    }
+  });
+
+  test('KRN-124-005: a negative numberOfRepeats is accepted and saved as-is', async () => {
+    const projectId = await getFirstProjectId();
+    const patientId = await createThrowawayPatient('krane-124-negative-repeats');
+
+    try {
+      const repeat = { repeatDuration: 1, durationUnit: 'day', numberOfRepeats: -1 };
+      const schedule = baseSchedule({ repeat }, projectId);
+
+      const patchRes = await api.patch(`/user/${patientId}`, { data: { schedules: [schedule] } });
+      expect(patchRes.ok(), `patch /user/${patientId} gave ${patchRes.status()}: ${await patchRes.text()}`).toBeTruthy();
+
+      const getRes = await api.get(`/patient/${patientId}`);
+      expect(getRes.ok(), `get /patient/${patientId} gave ${getRes.status()}: ${await getRes.text()}`).toBeTruthy();
+      const patient = await getRes.json();
+      expect(patient.schedules[0].repeat).toEqual(repeat);
+    } finally {
+      const del = await api.delete(`/user/${patientId}`);
+      console.log('cleaning up test patient, status:', del.status());
+    }
+  });
+
+  test('KRN-124-006: repeatDuration: 0 is accepted and saved as-is', async () => {
+    const projectId = await getFirstProjectId();
+    const patientId = await createThrowawayPatient('krane-124-zero-duration');
+
+    try {
+      const repeat = { repeatDuration: 0, durationUnit: 'day' };
+      const schedule = baseSchedule({ repeat }, projectId);
+
+      const patchRes = await api.patch(`/user/${patientId}`, { data: { schedules: [schedule] } });
+      expect(patchRes.ok(), `patch /user/${patientId} gave ${patchRes.status()}: ${await patchRes.text()}`).toBeTruthy();
+
+      const getRes = await api.get(`/patient/${patientId}`);
+      expect(getRes.ok(), `get /patient/${patientId} gave ${getRes.status()}: ${await getRes.text()}`).toBeTruthy();
+      const patient = await getRes.json();
+      expect(patient.schedules[0].repeat).toEqual(repeat);
+    } finally {
+      const del = await api.delete(`/user/${patientId}`);
+      console.log('cleaning up test patient, status:', del.status());
+    }
+  });
+
+  test('KRN-124-007: a CalendarRepeat with an out-of-range weekday is accepted and saved as-is', async () => {
+    const projectId = await getFirstProjectId();
+    const patientId = await createThrowawayPatient('krane-124-invalid-weekday');
+
+    try {
+      // WeeklyOccurrence.weekday is documented as 0-6 (Sun-Sat per KRN-124-002's weekday: 1
+      // = Monday); 9 is out of range.
+      const repeat = { interval: 'week', occurrences: [{ type: 'weekly', weekday: 9 }] };
+      const schedule = baseSchedule({ repeat }, projectId);
+
+      const patchRes = await api.patch(`/user/${patientId}`, { data: { schedules: [schedule] } });
+      expect(patchRes.ok(), `patch /user/${patientId} gave ${patchRes.status()}: ${await patchRes.text()}`).toBeTruthy();
+
+      const getRes = await api.get(`/patient/${patientId}`);
+      expect(getRes.ok(), `get /patient/${patientId} gave ${getRes.status()}: ${await getRes.text()}`).toBeTruthy();
+      const patient = await getRes.json();
+      expect(patient.schedules[0].repeat).toEqual(repeat);
+    } finally {
+      const del = await api.delete(`/user/${patientId}`);
+      console.log('cleaning up test patient, status:', del.status());
+    }
+  });
 });

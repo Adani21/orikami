@@ -30,13 +30,24 @@ function wrap(res: Response): ApiResponse {
   };
 }
 
-async function send(method: string, path: string, data?: unknown): Promise<ApiResponse> {
+// auth: omit/true → the real KRANE_API_TOKEN; false → no Authorization header at all;
+// a string → send that literal value as the bearer token instead (e.g. a garbage/expired
+// token, to distinguish "no credentials" from "bad credentials" in negative tests).
+type Auth = boolean | string;
+
+function authHeader(auth: Auth = true): Record<string, string> {
+  if (auth === false) return {};
+  const token = typeof auth === 'string' ? auth : API_TOKEN;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function send(method: string, path: string, data?: unknown, auth?: Auth): Promise<ApiResponse> {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: {
       Accept: 'application/json',
       ...(data !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {}),
+      ...authHeader(auth),
     },
     body: data !== undefined ? JSON.stringify(data) : undefined,
   });
@@ -45,9 +56,9 @@ async function send(method: string, path: string, data?: unknown): Promise<ApiRe
 }
 
 export const api = {
-  get: (path: string) => send('GET', path),
-  post: (path: string, opts?: { data?: unknown }) => send('POST', path, opts?.data),
-  patch: (path: string, opts?: { data?: unknown }) => send('PATCH', path, opts?.data),
-  put: (path: string, opts?: { data?: unknown }) => send('PUT', path, opts?.data),
-  delete: (path: string) => send('DELETE', path),
+  get: (path: string, opts?: { auth?: Auth }) => send('GET', path, undefined, opts?.auth),
+  post: (path: string, opts?: { data?: unknown; auth?: Auth }) => send('POST', path, opts?.data, opts?.auth),
+  patch: (path: string, opts?: { data?: unknown; auth?: Auth }) => send('PATCH', path, opts?.data, opts?.auth),
+  put: (path: string, opts?: { data?: unknown; auth?: Auth }) => send('PUT', path, opts?.data, opts?.auth),
+  delete: (path: string, opts?: { auth?: Auth }) => send('DELETE', path, undefined, opts?.auth),
 };
